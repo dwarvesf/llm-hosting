@@ -1,0 +1,19 @@
+{
+  "packages": [
+    "python@3.10.13",
+    "python310Packages.pip@23.2.1",
+    "nodejs@21.5.0"
+  ],
+  "shell": {
+    "init_hook": [
+      ". $VENV_DIR/bin/activate",
+      "pip install modal",
+      "modal profile activate default"
+    ],
+    "scripts": {
+      "test": [
+        "echo \"Error: no test specified\" && exit 1"
+      ]
+    }
+  }
+}
