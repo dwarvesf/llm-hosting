@@ -9,8 +9,6 @@ from modal import Image, Secret, Stub, enter, gpu, method, web_server
 MODEL_DIR = "/model"
 BASE_MODEL = "Snowflake/snowflake-arctic-embed-l"
 
-api_key = secrets.token_urlsafe()
-
 # ## Define a container image
 
 
@@ -51,7 +49,7 @@ image = (
     .apt_install("git")
     .run_commands(
         "git clone https://github.com/monotykamary/infinity.git",
-        "cd infinity/libs/infinity_emb && git checkout e63545da1c5c0607831b94ce75707d6dcf9f5474 && pip install .[all]",
+        "cd infinity/libs/infinity_emb && git checkout c8121b9e19fcd7658aa87aea2457979b07c9fd25 && pip install .[all]",
     )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
@@ -71,10 +69,12 @@ GPU_CONFIG = gpu.T4(count=1)
     allow_concurrent_inputs=100,
     container_idle_timeout=60,
     gpu=GPU_CONFIG,
-    secrets=[Secret.from_name("huggingface")],
+    secrets=[
+        Secret.from_name("huggingface"),
+        Secret.from_dotenv(),
+    ],
 )
 @web_server(7997, startup_timeout=300)
 def infinity_embeddings_server():
-    api_key = os.getenv("INFINITY_API_KEY")
-    cmd = f"INFINITY_API_KEY={api_key} infinity_emb --model-name-or-path {BASE_MODEL}"
+    cmd = f"infinity_emb --model-name-or-path {BASE_MODEL}"
     subprocess.Popen(cmd, shell=True)

@@ -13,8 +13,6 @@ from modal import Image, Secret, Stub, enter, gpu, method, web_server
 MODEL_DIR = "/model"
 BASE_MODEL = "SeaLLMs/SeaLLM-7B-v2.5"
 
-api_key = secrets.token_urlsafe()
-
 # ## Define a container image
 
 
@@ -67,9 +65,6 @@ image = (
         secrets=[Secret.from_name("huggingface")],
         timeout=60 * 20,
     )
-    .run_commands(
-        f"export VLLM_API_KEY={api_key}",
-    )
 )
 
 stub = Stub("vllm-seallm-7b-v2.5", image=image)
@@ -81,7 +76,10 @@ GPU_CONFIG = gpu.A100(memory=40, count=1)
     allow_concurrent_inputs=100,
         container_idle_timeout=60,
     gpu=GPU_CONFIG,
-    secrets=[Secret.from_name("huggingface")],
+    secrets=[
+        Secret.from_name("huggingface"),
+        Secret.from_dotenv(),
+    ],
 )
 @web_server(8000, startup_timeout=300)
 def openai_compatible_server():

@@ -7,7 +7,7 @@
   "shell": {
     "init_hook": [
       ". $VENV_DIR/bin/activate",
-      "pip install modal",
+      "pip install modal python-dotenv",
       "modal profile activate default"
     ],
     "scripts": {

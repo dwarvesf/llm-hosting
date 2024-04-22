@@ -1,17 +1,13 @@
-# # Fast inference with vLLM (TheBloke/deepseek-coder-33B-instruct-AWQ)
-#
-# In this example, we show how to run basic inference, using [`vLLM`](https://github.com/vllm-project/vllm)
-# to take advantage of PagedAttention, which speeds up sequential inferences with optimized key-value caching.
+# # Fast inference with Infinity (mixedbread-ai/mxbai-rerank-large-v1)
 
 import os
 import subprocess
 import secrets
 
-
 from modal import Image, Secret, Stub, enter, gpu, method, web_server
 
 MODEL_DIR = "/model"
-BASE_MODEL = "TheBloke/deepseek-coder-33B-instruct-AWQ"
+BASE_MODEL = "mixedbread-ai/mxbai-rerank-large-v1"
 
 # ## Define a container image
 
@@ -45,18 +41,16 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
-        "vllm==0.4.0.post1",
-        "packaging==24.0",
         "wheel==0.43.0",
-        "packaging==24.0",
         "huggingface_hub==0.22.2",
         "hf-transfer==0.1.6",
-        "torch==2.1.2",
+        "torch==2.2.1",
+        "sentence-transformers==2.7.0",
     )
     .apt_install("git")
     .run_commands(
-        "pip install flash-attn==2.5.7 --no-build-isolation",
-        "pip install git+https://github.com/casper-hansen/AutoAWQ.git@4fc6cc03a34f8b58b8ddc8cc04fafe39c775d991",
+        "git clone https://github.com/monotykamary/infinity.git",
+        "cd infinity/libs/infinity_emb && git checkout c8121b9e19fcd7658aa87aea2457979b07c9fd25 && pip install .[all]",
     )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
@@ -67,8 +61,8 @@ image = (
     )
 )
 
-stub = Stub("vllm-deepseek-coder-33b", image=image)
-GPU_CONFIG = gpu.A100(memory=80, count=1)
+stub = Stub("infinity-mxbai-rerank-large-v1", image=image)
+GPU_CONFIG = gpu.T4(count=1)
 
 
 # Run a web server on port 8000 and expose vLLM OpenAI compatible server
@@ -81,8 +75,7 @@ GPU_CONFIG = gpu.A100(memory=80, count=1)
         Secret.from_dotenv(),
     ],
 )
-@web_server(8000, startup_timeout=300)
-def openai_compatible_server():
-    target = BASE_MODEL
-    cmd = f"python -m vllm.entrypoints.openai.api_server --model {target} --port 8000"
+@web_server(7997, startup_timeout=300)
+def infinity_embeddings_server():
+    cmd = f"infinity_emb --model-name-or-path {BASE_MODEL}"
     subprocess.Popen(cmd, shell=True)

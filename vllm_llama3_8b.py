@@ -13,8 +13,6 @@ from modal import Image, Secret, Stub, enter, gpu, method, web_server
 MODEL_DIR = "/model"
 BASE_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct"
 
-api_key = secrets.token_urlsafe()
-
 # ## Define a container image
 
 
@@ -67,9 +65,6 @@ image = (
         secrets=[Secret.from_name("huggingface")],
         timeout=60 * 20,
     )
-    .run_commands(
-        f"export VLLM_API_KEY={api_key}",
-    )
 )
 
 stub = Stub("vllm-llama3-8b", image=image)
@@ -81,7 +76,10 @@ GPU_CONFIG = gpu.A100(memory=40, count=1)
     allow_concurrent_inputs=100,
     container_idle_timeout=60,
     gpu=GPU_CONFIG,
-    secrets=[Secret.from_name("huggingface")],
+    secrets=[
+        Secret.from_name("huggingface"),
+        Secret.from_dotenv(),
+    ],
 )
 @web_server(8000, startup_timeout=300)
 def openai_compatible_server():
