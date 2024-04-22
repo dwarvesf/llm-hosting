@@ -1,17 +1,13 @@
-# # Fast inference with vLLM (SeaLLMs/SeaLLM-7B-v2.5)
-#
-# In this example, we show how to run basic inference, using [`vLLM`](https://github.com/vllm-project/vllm)
-# to take advantage of PagedAttention, which speeds up sequential inferences with optimized key-value caching.
+# # Fast inference with Infinity (Snowflake/snowflake-arctic-embed-l)
 
 import os
 import subprocess
 import secrets
 
-
 from modal import Image, Secret, Stub, enter, gpu, method, web_server
 
 MODEL_DIR = "/model"
-BASE_MODEL = "SeaLLMs/SeaLLM-7B-v2.5"
+BASE_MODEL = "Snowflake/snowflake-arctic-embed-l"
 
 api_key = secrets.token_urlsafe()
 
@@ -47,18 +43,15 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
-        "vllm==0.4.0.post1",
-        "packaging==24.0",
         "wheel==0.43.0",
-        "packaging==24.0",
         "huggingface_hub==0.22.2",
         "hf-transfer==0.1.6",
-        "torch==2.1.2",
+        "torch==2.2.1",
     )
     .apt_install("git")
     .run_commands(
-        "pip install flash-attn==2.5.7 --no-build-isolation",
-        "pip install git+https://github.com/casper-hansen/AutoAWQ.git@4fc6cc03a34f8b58b8ddc8cc04fafe39c775d991",
+        "git clone https://github.com/monotykamary/infinity.git",
+        "cd infinity/libs/infinity_emb && git checkout e63545da1c5c0607831b94ce75707d6dcf9f5474 && pip install .[all]",
     )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
@@ -67,24 +60,21 @@ image = (
         secrets=[Secret.from_name("huggingface")],
         timeout=60 * 20,
     )
-    .run_commands(
-        f"export VLLM_API_KEY={api_key}",
-    )
 )
 
-stub = Stub("vllm-seallm-7b-v2.5", image=image)
-GPU_CONFIG = gpu.A100(memory=40, count=1)
+stub = Stub("infinity-snowflake-arctic-embed-l-335m", image=image)
+GPU_CONFIG = gpu.T4(count=1)
 
 
 # Run a web server on port 8000 and expose vLLM OpenAI compatible server
 @stub.function(
     allow_concurrent_inputs=100,
-        container_idle_timeout=60,
+    container_idle_timeout=60,
     gpu=GPU_CONFIG,
     secrets=[Secret.from_name("huggingface")],
 )
-@web_server(8000, startup_timeout=300)
-def openai_compatible_server():
-    target = BASE_MODEL
-    cmd = f"python -m vllm.entrypoints.openai.api_server --model {target} --port 8000"
+@web_server(7997, startup_timeout=300)
+def infinity_embeddings_server():
+    api_key = os.getenv("INFINITY_API_KEY")
+    cmd = f"INFINITY_API_KEY={api_key} infinity_emb --model-name-or-path {BASE_MODEL}"
     subprocess.Popen(cmd, shell=True)

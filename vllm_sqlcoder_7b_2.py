@@ -51,7 +51,6 @@ image = (
         "packaging==24.0",
         "wheel==0.43.0",
         "packaging==24.0",
-        "wheel==0.43.0",
         "huggingface_hub==0.22.2",
         "hf-transfer==0.1.6",
         "torch==2.1.2",
