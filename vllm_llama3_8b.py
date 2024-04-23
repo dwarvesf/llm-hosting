@@ -71,7 +71,7 @@ stub = Stub("vllm-llama3-8b", image=image)
 GPU_CONFIG = gpu.A100(memory=40, count=1)
 
 
-# Run a web server on port 8000 and expose vLLM OpenAI compatible server
+# Run a web server on port 7997 and expose the Infinity embedding server
 @stub.function(
     allow_concurrent_inputs=100,
     container_idle_timeout=60,
