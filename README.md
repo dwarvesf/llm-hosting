@@ -43,3 +43,55 @@ modal deploy vllm_seallm_7b_v2_5.py
 modal deploy vllm_sqlcoder_7b_2.py
 ```
 Each command will deploy the respective script, launching the Infinity embeddings server or an OpenAI compatible vLLM server configured per the script's specifications.
+
+## Inference
+
+Expect cold starts between 30s and 1 minute with Modal. Both the vLLM and Infinity servers take in an API key, specified in your `.env` file. You can use this to make requests for inference on these models:
+
+**Querying LLMs**:
+```bash
+time curl <url> \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <VLLM_API_KEY>" \
+-d '{
+  "model": "TheBloke/deepseek-coder-33B-instruct-AWQ",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write me a python snake game."
+    }
+  ],
+  "temperature": 0,
+  "max_tokens": 1024
+}'
+```
+
+**Querying Embeddings**:
+```bash
+time curl <url> \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <INFINITY_API_KEY>" \
+-d '{
+  "model": "Snowflake/snowflake-arctic-embed-l",
+  "input": ["The quick brown fox jumps over the lazy dog."]
+}'
+```
+
+**Querying Rerankings**:
+```bash
+time curl -X 'POST' \
+  <url> \
+  -H 'accept: application/json' \
+  -H "Authorization: Bearer <INFINITY_API_KEY>" \
+  -H 'Content-Type: application/json' \
+  -d '{                                          
+  "model": "mixedbread-ai/mxbai-rerank-large-v1",     
+  "query": "What is the python package infinity_emb?",
+  "documents": [                                                                  
+    "This is a document not related to the python package infinity_emb, hence...",
+    "Paris is in France!",                                                                                
+    "infinity_emb is a package for sentence embeddings and rerankings using transformer models in Python!"
+  ],                      
+  "return_documents": true
+}'
+```
