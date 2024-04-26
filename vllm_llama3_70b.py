@@ -1,4 +1,4 @@
-# # Fast inference with vLLM (TheBloke/deepseek-coder-33B-instruct-AWQ)
+# # Fast inference with vLLM (PrunaAI/Meta-Llama-3-70b-instruct-AWQ-smashed)
 #
 # In this example, we show how to run basic inference, using [`vLLM`](https://github.com/vllm-project/vllm)
 # to take advantage of PagedAttention, which speeds up sequential inferences with optimized key-value caching.
@@ -11,7 +11,7 @@ import secrets
 from modal import Image, Secret, Stub, enter, gpu, method, web_server
 
 MODEL_DIR = "/model"
-BASE_MODEL = "TheBloke/deepseek-coder-33B-instruct-AWQ"
+BASE_MODEL = "PrunaAI/Meta-Llama-3-70b-instruct-AWQ-smashed"
 
 # ## Define a container image
 
@@ -67,7 +67,7 @@ image = (
     )
 )
 
-stub = Stub("vllm-deepseek-coder-33b", image=image)
+stub = Stub("vllm-llama-3-70b", image=image)
 GPU_CONFIG = gpu.A100(memory=80, count=1)
 
 

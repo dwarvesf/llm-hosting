@@ -37,6 +37,7 @@ modal deploy infinity_mxbai_embed_large_v1.py
 modal deploy infinity_mxbai_rerank_large_v1.py
 modal deploy infinity_snowflake_arctic_embed_l_335m.py
 
+modal deploy vllm_llama3_70b.py
 modal deploy vllm_deepseek_coder_33b.py
 modal deploy vllm_llama3-8b.py
 modal deploy vllm_seallm_7b_v2_5.py
