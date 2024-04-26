@@ -46,7 +46,7 @@ image = (
         "hf-transfer==0.1.6",
         "torch==2.2.1",
         "poetry==1.8.2",
-        "transformers==4.40.0",
+        "transformers==4.40.1",
         "sentence-transformers==2.6.1",
     )
     .apt_install("git")
