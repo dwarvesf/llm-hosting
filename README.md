@@ -2,7 +2,7 @@
 This repository is designed for deploying and managing server processes that handle embeddings using the Infinity Embedding model or Large Language Models with an OpenAI compatible vLLM server using Modal.
 
 ## Key Components
-1. **vllm_deepseek_coder_33b.py, vllm_llama3-8b.py, vllm_seallm_7b_v2_5.py, vllm_sqlcoder_7b_2.py**
+1. **vllm_llama_70b.py, vllm_deepseek_coder_33b.py, vllm_llama3-8b.py, vllm_seallm_7b_v2_5.py, vllm_sqlcoder_7b_2.py, vllm_duckdb_nsql_7b.py**
    - These scripts contain the function `openai_compatible_server()` which initiates an OpenAI compatible vLLM server by running a command that instantiates an OpenAI compatible FastAPI server..
    - The `BASE_MODEL` variable appears to define the model path for the embedding tool, which is not shown but can be inferred from the context.
 
@@ -42,6 +42,7 @@ modal deploy vllm_deepseek_coder_33b.py
 modal deploy vllm_llama3-8b.py
 modal deploy vllm_seallm_7b_v2_5.py
 modal deploy vllm_sqlcoder_7b_2.py
+modal deploy vllm_duckdb_nsql_7b.py
 ```
 Each command will deploy the respective script, launching the Infinity embeddings server or an OpenAI compatible vLLM server configured per the script's specifications.
 
