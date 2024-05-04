@@ -49,14 +49,14 @@ image = (
         "packaging==24.0",
         "wheel==0.43.0",
         "packaging==24.0",
-        "huggingface_hub==0.22.2",
+        "huggingface_hub==0.23.0",
         "hf-transfer==0.1.6",
         "torch==2.2.1",
+        "autoawq==0.2.5",
     )
     .apt_install("git")
     .run_commands(
-        "pip install flash-attn==2.5.7 --no-build-isolation",
-        "pip install git+https://github.com/casper-hansen/AutoAWQ.git@4fc6cc03a34f8b58b8ddc8cc04fafe39c775d991",
+        "pip install flash-attn==2.5.8 --no-build-isolation",
     )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
