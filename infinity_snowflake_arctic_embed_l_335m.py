@@ -52,7 +52,7 @@ image = (
     .apt_install("git")
     .run_commands(
         "git clone https://github.com/monotykamary/infinity.git",
-        "cd infinity/libs/infinity_emb && git checkout c8121b9e19fcd7658aa87aea2457979b07c9fd25 && poetry build && pip install 'dist/infinity_emb-0.0.32-py3-none-any.whl[all]'",
+        "cd infinity/libs/infinity_emb && git checkout 086911d407e130b3236787deed4685010e2c858b && poetry build && pip install 'dist/infinity_emb-0.0.33-py3-none-any.whl[all]'",
     )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
