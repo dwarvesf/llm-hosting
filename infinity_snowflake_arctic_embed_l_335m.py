@@ -4,7 +4,7 @@ import os
 import subprocess
 import secrets
 
-from modal import Image, Secret, Stub, enter, gpu, method, web_server
+from modal import Image, Secret, App, enter, gpu, method, web_server
 
 MODEL_DIR = "/model"
 BASE_MODEL = "Snowflake/snowflake-arctic-embed-l"
@@ -44,7 +44,7 @@ image = (
         "wheel==0.43.0",
         "huggingface_hub==0.23.0",
         "hf-transfer==0.1.6",
-        "torch==2.2.1",
+        "torch==2.3.0",
         "poetry==1.8.2",
         "transformers==4.40.1",
         "sentence-transformers==2.6.1",
@@ -63,12 +63,12 @@ image = (
     )
 )
 
-stub = Stub("infinity-snowflake-arctic-embed-l-335m", image=image)
+app = App("infinity-snowflake-arctic-embed-l-335m", image=image)
 GPU_CONFIG = gpu.T4(count=1)
 
 
 # Run a web server on port 8000 and expose vLLM OpenAI compatible server
-@stub.function(
+@app.function(
     allow_concurrent_inputs=100,
     container_idle_timeout=60,
     gpu=GPU_CONFIG,

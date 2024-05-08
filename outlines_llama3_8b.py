@@ -1,4 +1,4 @@
-# # Fast inference with vLLM (defog/sqlcoder-7b-2)
+# # Fast inference with vLLM (meta-llama/Meta-Llama-3-8B-Instruct)
 #
 # In this example, we show how to run basic inference, using [`vLLM`](https://github.com/vllm-project/vllm)
 # to take advantage of PagedAttention, which speeds up sequential inferences with optimized key-value caching.
@@ -11,7 +11,7 @@ import secrets
 from modal import Image, Secret, App, enter, gpu, method, web_server
 
 MODEL_DIR = "/model"
-BASE_MODEL = "defog/sqlcoder-7b-2"
+BASE_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct"
 
 # ## Define a container image
 
@@ -53,6 +53,7 @@ image = (
         "hf-transfer==0.1.6",
         "torch==2.3.0",
         "autoawq==0.2.5",
+        "outlines[serve]==0.0.34",
     )
     .apt_install("git")
     .run_commands(
@@ -67,11 +68,11 @@ image = (
     )
 )
 
-app = App("vllm-defog-sqlcoder-7b-2", image=image)
+app = App("outlines-llama3-8b", image=image)
 GPU_CONFIG = gpu.A100(memory=40, count=1)
 
 
-# Run a web server on port 8000 and expose vLLM OpenAI compatible server
+# Run a web server on port 7997 and expose the Infinity embedding server
 @app.function(
     allow_concurrent_inputs=100,
     container_idle_timeout=60,
@@ -82,7 +83,7 @@ GPU_CONFIG = gpu.A100(memory=40, count=1)
     ],
 )
 @web_server(8000, startup_timeout=300)
-def openai_compatible_server():
+def outlines_server():
     target = BASE_MODEL
-    cmd = f"python -m vllm.entrypoints.openai.api_server --model {target} --port 8000"
+    cmd = f"python -m outlines.serve.serve --model {target} --port 8000"
     subprocess.Popen(cmd, shell=True)

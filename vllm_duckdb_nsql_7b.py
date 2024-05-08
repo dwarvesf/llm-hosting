@@ -8,7 +8,7 @@ import subprocess
 import secrets
 
 
-from modal import Image, Secret, Stub, enter, gpu, method, web_server
+from modal import Image, Secret, App, enter, gpu, method, web_server
 
 MODEL_DIR = "/model"
 BASE_MODEL = "motherduckdb/DuckDB-NSQL-7B-v0.1"
@@ -45,13 +45,13 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
-        "vllm==0.4.1",
+        "vllm==0.4.2",
         "packaging==24.0",
         "wheel==0.43.0",
         "packaging==24.0",
         "huggingface_hub==0.23.0",
         "hf-transfer==0.1.6",
-        "torch==2.2.1",
+        "torch==2.3.0",
         "autoawq==0.2.5",
     )
     .apt_install("git")
@@ -67,12 +67,12 @@ image = (
     )
 )
 
-stub = Stub("vllm-duckdb-nsql-7b", image=image)
+app = App("vllm-duckdb-nsql-7b", image=image)
 GPU_CONFIG = gpu.A100(memory=40, count=1)
 
 
 # Run a web server on port 8000 and expose vLLM OpenAI compatible server
-@stub.function(
+@app.function(
     allow_concurrent_inputs=100,
     container_idle_timeout=60,
     gpu=GPU_CONFIG,
