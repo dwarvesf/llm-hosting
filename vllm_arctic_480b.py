@@ -1,4 +1,4 @@
-# # Fast inference with vLLM (Qwen/Qwen1.5-110B-Chat-AWQ)
+# # Fast inference with vLLM (Snowflake/snowflake-arctic-instruct)
 #
 # In this example, we show how to run basic inference, using [`vLLM`](https://github.com/vllm-project/vllm)
 # to take advantage of PagedAttention, which speeds up sequential inferences with optimized key-value caching.
@@ -11,7 +11,7 @@ import secrets
 from modal import Image, Secret, App, enter, gpu, method, web_server
 
 MODEL_DIR = "/model"
-BASE_MODEL = "Qwen/Qwen1.5-110B-Chat-AWQ"
+BASE_MODEL = "Snowflake/snowflake-arctic-instruct"
 
 # ## Define a container image
 
@@ -62,15 +62,15 @@ image = (
     .run_function(
         download_model_to_folder,
         secrets=[Secret.from_name("huggingface")],
-        timeout=60 * 20,
+        timeout=60 * 60,
     )
 )
 
-app = App("vllm-codeqwen-110b-v1.5", image=image)
-GPU_CONFIG = gpu.A100(memory=80, count=2)
+app = App("vllm-arctic", image=image)
+GPU_CONFIG = gpu.A100(memory=40, count=1)
 
 
-# Run a web server on port 8000 and expose vLLM OpenAI compatible server
+# Run a web server on port 7997 and expose the Infinity embedding server
 @app.function(
     allow_concurrent_inputs=100,
     container_idle_timeout=60,
@@ -80,8 +80,8 @@ GPU_CONFIG = gpu.A100(memory=80, count=2)
         Secret.from_dotenv(),
     ],
 )
-@web_server(8000, startup_timeout=900)
+@web_server(8000, startup_timeout=300)
 def openai_compatible_server():
     target = BASE_MODEL
-    cmd = f"python -m vllm.entrypoints.openai.api_server --model {target} --port 8000 --quantization awq"
+    cmd = f"python -m vllm.entrypoints.openai.api_server --model {target} --port 8000"
     subprocess.Popen(cmd, shell=True)

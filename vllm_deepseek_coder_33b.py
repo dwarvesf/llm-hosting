@@ -46,7 +46,6 @@ image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
         "vllm==0.4.2",
-        "packaging==24.0",
         "wheel==0.43.0",
         "packaging==24.0",
         "huggingface_hub==0.23.0",
