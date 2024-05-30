@@ -51,7 +51,7 @@ image = (
     )
     .apt_install("git")
     .run_commands(
-        "pip install git+https://github.com/monotykamary/infinity.git@main#subdirectory=libs/infinity_emb&egg=infinity_emb[all]",
+        'pip install "infinity_emb[all] @ git+https://github.com/monotykamary/infinity.git@main#subdirectory=libs/infinity_emb"',
     )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
