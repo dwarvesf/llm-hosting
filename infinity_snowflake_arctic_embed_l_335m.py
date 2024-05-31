@@ -51,8 +51,7 @@ image = (
     )
     .apt_install("git")
     .run_commands(
-        "git clone https://github.com/monotykamary/infinity.git",
-        "cd infinity/libs/infinity_emb && git checkout 8dd3983f4d92ecf080719d6fa4d89ad94ef31a6c && poetry build && pip install 'dist/infinity_emb-0.0.33-py3-none-any.whl[all]'",
+        'pip install "infinity_emb[all] @ git+https://github.com/monotykamary/infinity.git@main#subdirectory=libs/infinity_emb"',
     )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
@@ -79,5 +78,5 @@ GPU_CONFIG = gpu.T4(count=1)
 )
 @web_server(7997, startup_timeout=300)
 def infinity_embeddings_server():
-    cmd = f"infinity_emb --device cuda --engine torch --model-name-or-path {BASE_MODEL}"
+    cmd = f"infinity_emb v2 --device cuda --engine torch --model-id {BASE_MODEL}"
     subprocess.Popen(cmd, shell=True)
