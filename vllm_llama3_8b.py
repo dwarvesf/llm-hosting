@@ -50,7 +50,7 @@ image = (
         "packaging==24.0",
         "huggingface_hub==0.23.3",
         "hf-transfer==0.1.6",
-        "torch==2.3.1",
+        "torch==2.3.0",
         "autoawq==0.2.5",
     )
     .apt_install("git")
@@ -67,7 +67,7 @@ image = (
 )
 
 app = App("vllm-llama3-8b", image=image)
-GPU_CONFIG = gpu.A100(memory=40, count=1)
+GPU_CONFIG = gpu.A100(size="40GB", count=1)
 
 
 # Run a web server on port 7997 and expose the Infinity embedding server

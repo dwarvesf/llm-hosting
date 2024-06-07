@@ -45,10 +45,10 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
-        "vllm==0.4.2",
+        "vllm==0.4.3",
         "wheel==0.43.0",
         "packaging==24.0",
-        "huggingface_hub==0.23.0",
+        "huggingface_hub==0.23.3",
         "hf-transfer==0.1.6",
         "torch==2.3.0",
         "autoawq==0.2.5",
@@ -67,7 +67,7 @@ image = (
 )
 
 app = App("vllm-defog-sqlcoder-7b-2", image=image)
-GPU_CONFIG = gpu.A100(memory=40, count=1)
+GPU_CONFIG = gpu.A100(size="40GB", count=1)
 
 
 # Run a web server on port 8000 and expose vLLM OpenAI compatible server
