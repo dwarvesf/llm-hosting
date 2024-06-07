@@ -45,12 +45,12 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
-        "vllm==0.4.2",
+        "vllm==0.4.3",
         "wheel==0.43.0",
         "packaging==24.0",
-        "huggingface_hub==0.23.0",
+        "huggingface_hub==0.23.3",
         "hf-transfer==0.1.6",
-        "torch==2.3.0",
+        "torch==2.3.1",
         "autoawq==0.2.5",
     )
     .apt_install("git")

@@ -42,17 +42,15 @@ image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
         "wheel==0.43.0",
-        "huggingface_hub==0.23.0",
+        "huggingface_hub==0.23.3",
         "hf-transfer==0.1.6",
         "torch==2.3.0",
-        "poetry==1.8.2",
-        "transformers==4.40.1",
-        "sentence-transformers==2.6.1",
+        "poetry==1.8.3",
+        "transformers==4.41.2",
+        "sentence-transformers==3.0.0",
+        "infinity_emb[all]==0.0.39"
     )
     .apt_install("git")
-    .run_commands(
-        'pip install "infinity_emb[all] @ git+https://github.com/monotykamary/infinity.git@main#subdirectory=libs/infinity_emb"',
-    )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
     .run_function(
