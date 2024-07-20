@@ -74,7 +74,7 @@ GPU_CONFIG = gpu.A100(size="40GB", count=1)
 # Run a web server on port 7997 and expose the Infinity embedding server
 @app.function(
     allow_concurrent_inputs=100,
-    container_idle_timeout=60,
+    container_idle_timeout=15,
     gpu=GPU_CONFIG,
     secrets=[
         Secret.from_name("huggingface"),

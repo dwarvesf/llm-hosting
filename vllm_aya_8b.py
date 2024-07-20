@@ -1,13 +1,17 @@
-# # Fast inference with Infinity (mixedbread-ai/mxbai-embed-large-v1)
+# # Fast inference with vLLM (CohereForAI/aya-23-8B)
+#
+# In this example, we show how to run basic inference, using [`vLLM`](https://github.com/vllm-project/vllm)
+# to take advantage of PagedAttention, which speeds up sequential inferences with optimized key-value caching.
 
 import os
 import subprocess
 import secrets
 
+
 from modal import Image, Secret, App, enter, gpu, method, web_server
 
 MODEL_DIR = "/model"
-BASE_MODEL = "mixedbread-ai/mxbai-embed-large-v1"
+BASE_MODEL = "CohereForAI/aya-23-8B"
 
 # ## Define a container image
 
@@ -41,16 +45,18 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
+        "vllm==0.5.2",
         "wheel==0.43.0",
+        "packaging==24.1",
         "huggingface_hub==0.24.0",
         "hf-transfer==0.1.6",
         "torch==2.3.1",
-        "transformers==4.42.4",
-        "sentence-transformers==3.0.1",
-        "infinity_emb[all]==0.0.51"
+        "autoawq==0.2.5",
     )
     .apt_install("git")
-    # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
+    .run_commands(
+        "pip install flash-attn==2.6.1 --no-build-isolation",
+    )    # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
     .run_function(
         download_model_to_folder,
@@ -59,8 +65,8 @@ image = (
     )
 )
 
-app = App("infinity-mxbai-embed-large-v1", image=image)
-GPU_CONFIG = gpu.T4(count=1)
+app = App("vllm-aya-8b", image=image)
+GPU_CONFIG = gpu.A100(size="40GB", count=1)
 
 
 # Run a web server on port 7997 and expose the Infinity embedding server
@@ -73,7 +79,8 @@ GPU_CONFIG = gpu.T4(count=1)
         Secret.from_dotenv(),
     ],
 )
-@web_server(7997, startup_timeout=300)
-def infinity_embeddings_server():
-    cmd = f"infinity_emb v2 --device cuda --engine torch --model-id {BASE_MODEL}"
+@web_server(8000, startup_timeout=300)
+def openai_compatible_server():
+    target = BASE_MODEL
+    cmd = f"python -m vllm.entrypoints.openai.api_server --model {target} --port 8000"
     subprocess.Popen(cmd, shell=True)

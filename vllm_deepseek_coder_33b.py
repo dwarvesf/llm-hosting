@@ -45,17 +45,17 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
-        "vllm==0.4.3",
+        "vllm==0.5.2",
         "wheel==0.43.0",
-        "packaging==24.0",
-        "huggingface_hub==0.23.3",
+        "packaging==24.1",
+        "huggingface_hub==0.24.0",
         "hf-transfer==0.1.6",
-        "torch==2.3.0",
+        "torch==2.3.1",
         "autoawq==0.2.5",
     )
     .apt_install("git")
     .run_commands(
-        "pip install flash-attn==2.5.8 --no-build-isolation",
+        "pip install flash-attn==2.6.1 --no-build-isolation",
     )
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
@@ -73,7 +73,7 @@ GPU_CONFIG = gpu.A100(memory=80, count=1)
 # Run a web server on port 8000 and expose vLLM OpenAI compatible server
 @app.function(
     allow_concurrent_inputs=100,
-    container_idle_timeout=60,
+    container_idle_timeout=15,
     gpu=GPU_CONFIG,
     secrets=[
         Secret.from_name("huggingface"),
