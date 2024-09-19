@@ -41,13 +41,13 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
-        "wheel==0.43.0",
-        "huggingface_hub==0.24.0",
-        "hf-transfer==0.1.6",
-        "torch==2.3.1",
-        "transformers==4.42.4",
-        "sentence-transformers==3.0.1",
-        "infinity_emb[all]==0.0.51"
+        "wheel==0.44.0",
+        "huggingface_hub==0.25.0",
+        "hf-transfer==0.1.8",
+        "torch==2.4.1",
+        "transformers==4.44.2",
+        "sentence-transformers==3.1.0",
+        "infinity_emb[all]==0.0.56"
     )
     .apt_install("git")
     # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.

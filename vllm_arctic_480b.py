@@ -45,17 +45,16 @@ def download_model_to_folder():
 image = (
     Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .pip_install(
-        "vllm==0.5.2",
-        "wheel==0.43.0",
+        "vllm==0.6.1.post2",
+        "wheel==0.44.0",
         "packaging==24.1",
-        "huggingface_hub==0.24.0",
-        "hf-transfer==0.1.6",
-        "torch==2.3.1",
-        "autoawq==0.2.5",
+        "huggingface_hub==0.25.0",
+        "hf-transfer==0.1.8",
+        "torch==2.4.0",
     )
     .apt_install("git")
     .run_commands(
-        "pip install flash-attn==2.6.1 --no-build-isolation",
+        "pip install flash-attn==2.6.3 --no-build-isolation",
     )    # Use the barebones hf-transfer package for maximum download speeds. No progress bar, but expect 700MB/s.
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
     .run_function(
