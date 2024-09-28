@@ -37,6 +37,7 @@ def scrape_tweet(url: str) -> dict:
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         context = browser.new_context(viewport={"width": 1920, "height": 1080})
+        context.set_default_timeout(120000)
         page = context.new_page()
 
         # enable background request intercepting:
