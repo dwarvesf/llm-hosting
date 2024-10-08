@@ -33,6 +33,8 @@ IGNORE_PATTERNS = [
     "__pycache__",
     "env",
     "venv",
+    ".venv",
+    "virtualenv",
     "target/dependency",
     "build/dependencies",
     "dist",
@@ -46,6 +48,43 @@ IGNORE_PATTERNS = [
     "Pods",
     ".git",
     ".*",
+    "*.lock",  # This will catch package-lock.json, yarn.lock, Gemfile.lock, etc.
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "Gemfile.lock",
+    "Pipfile.lock",
+    "poetry.lock",
+    "composer.lock",
+    "Cargo.lock",
+    "mix.lock",
+    "shard.lock",
+    "Podfile.lock",
+    "gradle.lockfile",
+    "pubspec.lock",
+    "project.assets.json",
+    "packages.lock.json",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    "*.so",
+    "*.dll",
+    "*.exe",
+    "*.bin",
+    "*.obj",
+    "*.o",
+    "*.a",
+    "*.lib",
+    "*.log",
+    "*.cache",
+    "*.bak",
+    "*.swp",
+    "*.swo",
+    "*.tmp",
+    "*.temp",
+    "*.DS_Store",
+    "Thumbs.db",
+    "desktop.ini",
 ]
 
 # Important file patterns
@@ -135,7 +174,7 @@ def traverse_git_repo(repo_url: str, branch: str = "main", repo_type: RepoType =
             for item in os.listdir(path):
                 item_path = os.path.join(path, item)
                 rel_path = os.path.relpath(item_path, clone_dir)
-                
+
                 if should_ignore(rel_path):
                     print(f"Ignoring: {rel_path}")  # Debug print
                     continue
