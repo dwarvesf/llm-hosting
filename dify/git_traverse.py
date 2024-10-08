@@ -85,6 +85,7 @@ IGNORE_PATTERNS = [
     "*.DS_Store",
     "Thumbs.db",
     "desktop.ini",
+    "go.sum",
 ]
 
 # Important file patterns
@@ -157,17 +158,34 @@ def traverse_git_repo(repo_url: str, branch: str = "main", repo_type: RepoType =
     repo_name = os.path.splitext(os.path.basename(urlparse(repo_url).path))[0]
     clone_dir = f"/tmp/{repo_name}"
 
-    try:
-        # Prepare clone options
-        clone_options = {'branch': branch}
-        if token:
-            if repo_type == RepoType.GITHUB:
-                repo_url = repo_url.replace('https://', f'https://{token}@')
-            elif repo_type == RepoType.GITLAB:
-                repo_url = repo_url.replace('https://', f'https://oauth2:{token}@')
+    def attempt_clone(branch):
+        try:
+            # Prepare clone options
+            clone_options = {'branch': branch}
+            if token:
+                if repo_type == RepoType.GITHUB:
+                    clone_url = repo_url.replace('https://', f'https://{token}@')
+                elif repo_type == RepoType.GITLAB:
+                    clone_url = repo_url.replace('https://', f'https://oauth2:{token}@')
+                else:
+                    clone_url = repo_url
+            else:
+                clone_url = repo_url
 
-        # Clone the repository
-        git.Repo.clone_from(repo_url, clone_dir, **clone_options)
+            # Clone the repository
+            git.Repo.clone_from(clone_url, clone_dir, **clone_options)
+            return True
+        except git.GitCommandError:
+            return False
+
+    try:
+        # Try cloning with the specified branch
+        if not attempt_clone(branch):
+            # If failed, try 'master'
+            if not attempt_clone('master'):
+                # If 'master' also failed, try 'main'
+                if not attempt_clone('main'):
+                    raise Exception("Failed to clone repository with specified branch, 'master', or 'main'")
 
         def traverse_directory(path):
             result = {}
@@ -234,3 +252,4 @@ def get_git_structure(
 
 if __name__ == "__main__":
     app.serve()
+
