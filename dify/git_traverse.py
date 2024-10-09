@@ -26,6 +26,7 @@ class GitRepoRequest(BaseModel):
     repo_url: str
     branch: Optional[str] = "main"
     type: Optional[RepoType] = None
+    file_patterns: Optional[List[str]] = None
 
 # Directories and files to ignore
 IGNORE_PATTERNS = [
@@ -89,7 +90,7 @@ IGNORE_PATTERNS = [
 ]
 
 # Important file patterns
-IMPORTANT_FILE_PATTERNS = [
+DEFAULT_IMPORTANT_FILE_PATTERNS = [
     "*.md",
     "README*",
     "CONTRIBUTING*",
@@ -128,8 +129,9 @@ def should_ignore(path: str) -> bool:
     name = os.path.basename(path)
     return any(fnmatch.fnmatch(name, pattern) for pattern in IGNORE_PATTERNS)
 
-def is_important_file(filename: str) -> bool:
-    return any(fnmatch.fnmatch(filename, pattern) for pattern in IMPORTANT_FILE_PATTERNS)
+def is_important_file(filename: str, custom_patterns: Optional[List[str]] = None) -> bool:
+    patterns = custom_patterns if custom_patterns is not None else DEFAULT_IMPORTANT_FILE_PATTERNS
+    return any(fnmatch.fnmatch(filename, pattern) for pattern in patterns)
 
 def validate_bearer_token(bearer_token: str, valid_token: str) -> bool:
     return bearer_token == f"Bearer {valid_token}"
@@ -143,7 +145,7 @@ def detect_repo_type(repo_url: str) -> RepoType:
         raise ValueError("Unable to detect repository type. Please specify 'type' in the request.")
 
 @app.function(image=image)
-def traverse_git_repo(repo_url: str, branch: str = "main", repo_type: RepoType = None, token: Optional[str] = None) -> dict:
+def traverse_git_repo(repo_url: str, branch: str = "main", repo_type: RepoType = None, token: Optional[str] = None, file_patterns: Optional[List[str]] = None) -> dict:
     """
     Clone a git repository, traverse it, and return its directory structure.
     """
@@ -202,7 +204,7 @@ def traverse_git_repo(repo_url: str, branch: str = "main", repo_type: RepoType =
                     if sub_result:  # Only include non-empty directories
                         result[item] = sub_result
                 else:
-                    if is_important_file(item):
+                    if is_important_file(item, file_patterns):
                         try:
                             with open(item_path, 'r', encoding='utf-8') as file:
                                 content = file.read()
@@ -243,7 +245,13 @@ def get_git_structure(
         # Detect or use provided repo type
         repo_type = request.type or detect_repo_type(request.repo_url)
 
-        structure = traverse_git_repo.remote(request.repo_url, request.branch, repo_type, x_git_token)
+        structure = traverse_git_repo.remote(
+            request.repo_url,
+            request.branch,
+            repo_type,
+            x_git_token,
+            request.file_patterns
+        )
         return JSONResponse(content=structure)
     except HTTPException as he:
         return JSONResponse(content={"error": he.detail}, status_code=he.status_code)
@@ -252,4 +260,3 @@ def get_git_structure(
 
 if __name__ == "__main__":
     app.serve()
-
