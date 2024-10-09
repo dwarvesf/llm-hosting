@@ -129,9 +129,9 @@ def should_ignore(path: str) -> bool:
     name = os.path.basename(path)
     return any(fnmatch.fnmatch(name, pattern) for pattern in IGNORE_PATTERNS)
 
-def is_important_file(filename: str, custom_patterns: Optional[List[str]] = None) -> bool:
+def is_important_file(rel_path: str, custom_patterns: Optional[List[str]] = None) -> bool:
     patterns = custom_patterns if custom_patterns is not None else DEFAULT_IMPORTANT_FILE_PATTERNS
-    return any(fnmatch.fnmatch(filename, pattern) for pattern in patterns)
+    return any(fnmatch.fnmatch(rel_path, pattern) for pattern in patterns)
 
 def validate_bearer_token(bearer_token: str, valid_token: str) -> bool:
     return bearer_token == f"Bearer {valid_token}"
@@ -204,7 +204,7 @@ def traverse_git_repo(repo_url: str, branch: str = "main", repo_type: RepoType =
                     if sub_result:  # Only include non-empty directories
                         result[item] = sub_result
                 else:
-                    if is_important_file(item, file_patterns):
+                    if is_important_file(rel_path, file_patterns):
                         try:
                             with open(item_path, 'r', encoding='utf-8') as file:
                                 content = file.read()
