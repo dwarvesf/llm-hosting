@@ -144,7 +144,7 @@ def detect_repo_type(repo_url: str) -> RepoType:
     else:
         raise ValueError("Unable to detect repository type. Please specify 'type' in the request.")
 
-@app.function(image=image)
+@app.function(image=image, container_idle_timeout=120, allow_concurrent_inputs=10)
 def traverse_git_repo(repo_url: str, branch: str = "main", repo_type: RepoType = None, token: Optional[str] = None, file_patterns: Optional[List[str]] = None) -> dict:
     """
     Clone a git repository, traverse it, and return its directory structure.
@@ -160,34 +160,26 @@ def traverse_git_repo(repo_url: str, branch: str = "main", repo_type: RepoType =
     repo_name = os.path.splitext(os.path.basename(urlparse(repo_url).path))[0]
     clone_dir = f"/tmp/{repo_name}"
 
-    def attempt_clone(branch):
-        try:
-            # Prepare clone options
-            clone_options = {'branch': branch}
-            if token:
-                if repo_type == RepoType.GITHUB:
-                    clone_url = repo_url.replace('https://', f'https://{token}@')
-                elif repo_type == RepoType.GITLAB:
-                    clone_url = repo_url.replace('https://', f'https://oauth2:{token}@')
-                else:
-                    clone_url = repo_url
-            else:
-                clone_url = repo_url
-
-            # Clone the repository
-            git.Repo.clone_from(clone_url, clone_dir, **clone_options)
-            return True
-        except git.GitCommandError:
-            return False
+    def prepare_clone_url():
+        if token:
+            if repo_type == RepoType.GITHUB:
+                return repo_url.replace('https://', f'https://{token}@')
+            elif repo_type == RepoType.GITLAB:
+                return repo_url.replace('https://', f'https://oauth2:{token}@')
+        return repo_url
 
     try:
-        # Try cloning with the specified branch
-        if not attempt_clone(branch):
-            # If failed, try 'master'
-            if not attempt_clone('master'):
-                # If 'master' also failed, try 'main'
-                if not attempt_clone('main'):
-                    raise Exception("Failed to clone repository with specified branch, 'master', or 'main'")
+        if os.path.exists(clone_dir):
+            print(f"Repository directory already exists: {clone_dir}")
+            repo = git.Repo(clone_dir)
+            if branch not in repo.heads:
+                print(f"Branch {branch} not found. Using default branch.")
+            else:
+                repo.git.checkout(branch)
+        else:
+            clone_url = prepare_clone_url()
+            print(f"Cloning repository: {repo_url}")
+            git.Repo.clone_from(clone_url, clone_dir, branch=branch)
 
         def traverse_directory(path):
             result = {}
