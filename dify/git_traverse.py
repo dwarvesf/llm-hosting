@@ -162,7 +162,9 @@ class GitTraverser:
         print("Cleaning up repository directory...")
         for item in os.listdir(self.clone_dir):
             item_path = os.path.join(self.clone_dir, item)
-            if os.path.isdir(item_path):
+            if os.path.islink(item_path):
+                os.unlink(item_path)
+            elif os.path.isdir(item_path):
                 shutil.rmtree(item_path)
             else:
                 os.remove(item_path)
