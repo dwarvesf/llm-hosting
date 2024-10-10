@@ -148,7 +148,7 @@ def detect_repo_type(repo_url: str) -> RepoType:
     else:
         raise ValueError("Unable to detect repository type. Please specify 'type' in the request.")
 
-@app.cls(image=image, container_idle_timeout=30, volumes={"/repos": repo_volume})
+@app.cls(image=image, container_idle_timeout=30, allow_concurrent_inputs=10, volumes={"/repos": repo_volume})
 class GitTraverser:
     @enter()
     def initialize(self):
