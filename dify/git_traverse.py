@@ -1,9 +1,10 @@
 import os
 import fnmatch
+import shutil
 from pydantic import BaseModel
 from fastapi import HTTPException, Header
 from fastapi.responses import JSONResponse
-from modal import Image, App, web_endpoint, Secret, Volume, method, enter
+from modal import Image, App, web_endpoint, Secret, Volume, method, enter, exit
 from typing import Optional, List
 from enum import Enum
 from urllib.parse import urlparse
@@ -147,13 +148,28 @@ def detect_repo_type(repo_url: str) -> RepoType:
     else:
         raise ValueError("Unable to detect repository type. Please specify 'type' in the request.")
 
-@app.cls(image=image, container_idle_timeout=60, volumes={"/repos": repo_volume})
+@app.cls(image=image, container_idle_timeout=30, volumes={"/repos": repo_volume})
 class GitTraverser:
     @enter()
     def initialize(self):
         self.clone_dir = "/repos"
         if not os.path.exists(self.clone_dir):
             os.makedirs(self.clone_dir)
+        repo_volume.reload()
+
+    @exit()
+    def cleanup(self):
+        print("Cleaning up repository directory...")
+        for item in os.listdir(self.clone_dir):
+            item_path = os.path.join(self.clone_dir, item)
+            if os.path.isdir(item_path):
+                shutil.rmtree(item_path)
+            else:
+                os.remove(item_path)
+
+        # Commit changes to the volume
+        repo_volume.commit()
+        print("Repository directory cleared.")
 
     @method()
     def traverse_git_repo(self, repo_url: str, branch: str = "main", repo_type: RepoType = None, token: Optional[str] = None, file_patterns: Optional[List[str]] = None) -> dict:
@@ -221,6 +237,9 @@ class GitTraverser:
 
             # Traverse the repository
             structure = traverse_directory()
+
+            # Commit changes to the volume
+            repo_volume.commit()
 
             return {"structure": structure}
 
