@@ -1,10 +1,9 @@
 import os
-import shutil
 import fnmatch
 from pydantic import BaseModel
 from fastapi import HTTPException, Header
 from fastapi.responses import JSONResponse
-from modal import Image, App, web_endpoint, Secret, Volume, method, enter, exit
+from modal import Image, App, web_endpoint, Secret, Volume, method, enter
 from typing import Optional, List
 from enum import Enum
 from urllib.parse import urlparse
@@ -148,7 +147,7 @@ def detect_repo_type(repo_url: str) -> RepoType:
     else:
         raise ValueError("Unable to detect repository type. Please specify 'type' in the request.")
 
-@app.cls(image=image, container_idle_timeout=300, volumes={"/repos": repo_volume})
+@app.cls(image=image, container_idle_timeout=60, volumes={"/repos": repo_volume})
 class GitTraverser:
     @enter()
     def initialize(self):
@@ -159,7 +158,7 @@ class GitTraverser:
     @method()
     def traverse_git_repo(self, repo_url: str, branch: str = "main", repo_type: RepoType = None, token: Optional[str] = None, file_patterns: Optional[List[str]] = None) -> dict:
         """
-        Clone a git repository, traverse it, and return its directory structure.
+        Clone a git repository blobless if it doesn't exist, traverse it, and return its directory structure.
         """
 
         import git
@@ -184,56 +183,53 @@ class GitTraverser:
             if os.path.exists(clone_dir):
                 print(f"Repository directory already exists: {clone_dir}")
                 repo = git.Repo(clone_dir)
-                if branch not in repo.heads:
-                    print(f"Branch {branch} not found. Using default branch.")
-                else:
-                    repo.git.checkout(branch)
             else:
                 clone_url = prepare_clone_url()
                 print(f"Cloning repository: {repo_url}")
-                git.Repo.clone_from(clone_url, clone_dir, branch=branch)
+                repo = git.Repo.clone_from(clone_url, clone_dir, branch=branch, filter='blob:none')
 
-            def traverse_directory(path):
+            def traverse_directory(path='.'):
                 result = {}
-                for item in os.listdir(path):
-                    item_path = os.path.join(path, item)
-                    rel_path = os.path.relpath(item_path, clone_dir)
+                try:
+                    items = repo.git.ls_tree('-r', '--name-only', 'HEAD', path).splitlines()
+                except git.GitCommandError as e:
+                    print(f"Git error in traverse_directory: {str(e)}")
+                    return result
 
-                    if should_ignore(rel_path):
+                for item in items:
+                    if should_ignore(item):
                         continue
 
-                    if os.path.isdir(item_path):
-                        sub_result = traverse_directory(item_path)
-                        if sub_result:  # Only include non-empty directories
-                            result[item] = sub_result
+                    parts = item.split('/')
+                    current = result
+                    for part in parts[:-1]:
+                        if part not in current:
+                            current[part] = {}
+                        current = current[part]
+                    
+                    if is_important_file(item, file_patterns):
+                        try:
+                            content = repo.git.show(f'HEAD:{item}')
+                            current[parts[-1]] = content
+                        except git.GitCommandError as e:
+                            print(f"Error reading file {item}: {str(e)}")
+                            current[parts[-1]] = "Error reading file"
                     else:
-                        if is_important_file(rel_path, file_patterns):
-                            try:
-                                with open(item_path, 'r', encoding='utf-8') as file:
-                                    content = file.read()
-                                result[item] = content
-                            except Exception as e:
-                                result[item] = f"Error reading file: {str(e)}"
-                        else:
-                            result[item] = "file"
+                        current[parts[-1]] = "file"
+
                 return result
 
-            # Traverse the cloned repository
-            structure = traverse_directory(clone_dir)
+            # Traverse the repository
+            structure = traverse_directory()
 
             return {"structure": structure}
 
         except git.GitCommandError as e:
-            raise Exception(f"Git error: {str(e)}")
+            raise Exception(f"Git command error: {str(e)}")
+        except git.InvalidGitRepositoryError:
+            raise Exception(f"Invalid git repository: {clone_dir}")
         except Exception as e:
             raise Exception(f"Error traversing repository: {str(e)}")
-
-    @exit()
-    def cleanup(self):
-        # Clear the entire repo_path
-        if os.path.exists(self.clone_dir):
-            shutil.rmtree(self.clone_dir)
-        os.makedirs(self.clone_dir)
 
 @app.function(image=image, secrets=[Secret.from_name("git-traverser-secret")])
 @web_endpoint(method="POST")
