@@ -8,7 +8,7 @@
     "init_hook": [
       ". $VENV_DIR/bin/activate",
       "pip install modal python-dotenv",
-      "modal profile activate default"
+      "modal profile activate dwarvesf"
     ],
     "scripts": {
       "test": [
