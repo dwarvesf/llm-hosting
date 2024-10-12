@@ -130,8 +130,11 @@ DEFAULT_IMPORTANT_FILE_PATTERNS = [
 ]
 
 def should_ignore(path: str) -> bool:
-    name = os.path.basename(path)
-    return any(fnmatch.fnmatch(name, pattern) for pattern in IGNORE_PATTERNS)
+    path_parts = path.split(os.sep)
+    for part in path_parts:
+        if any(fnmatch.fnmatch(part, pattern) for pattern in IGNORE_PATTERNS):
+            return True
+    return False
 
 def is_important_file(rel_path: str, custom_patterns: Optional[List[str]] = None) -> bool:
     patterns = custom_patterns if custom_patterns is not None else DEFAULT_IMPORTANT_FILE_PATTERNS
