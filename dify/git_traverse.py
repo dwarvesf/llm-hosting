@@ -28,7 +28,7 @@ class RepoType(str, Enum):
 
 class GitRepoRequest(BaseModel):
     repo_url: str
-    branch: Optional[str] = "main"
+    branch: Optional[str] = None
     type: Optional[RepoType] = None
     file_patterns: Optional[List[str]] = None
 
@@ -177,7 +177,7 @@ class GitTraverser:
         print("Repository directory cleared.")
 
     @method()
-    def traverse_git_repo(self, repo_url: str, branch: str = "main", repo_type: RepoType = None, token: Optional[str] = None, file_patterns: Optional[List[str]] = None) -> dict:
+    def traverse_git_repo(self, repo_url: str, branch: Optional[str] = None, repo_type: RepoType = None, token: Optional[str] = None, file_patterns: Optional[List[str]] = None) -> dict:
         """
         Clone a git repository blobless if it doesn't exist, traverse it, and return its directory structure.
         """
@@ -207,7 +207,16 @@ class GitTraverser:
             else:
                 clone_url = prepare_clone_url()
                 print(f"Cloning repository: {repo_url}")
-                repo = git.Repo.clone_from(clone_url, clone_dir, branch=branch, filter='blob:none')
+                
+                if branch is None:
+                    # Try cloning with 'main' first, then 'master' if it fails
+                    try:
+                        repo = git.Repo.clone_from(clone_url, clone_dir, branch='main', filter='blob:none')
+                    except git.GitCommandError:
+                        print("Failed to clone 'main' branch, attempting 'master'")
+                        repo = git.Repo.clone_from(clone_url, clone_dir, branch='master', filter='blob:none')
+                else:
+                    repo = git.Repo.clone_from(clone_url, clone_dir, branch=branch, filter='blob:none')
 
             def traverse_directory(path='.'):
                 result = {}
