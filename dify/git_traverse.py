@@ -31,6 +31,7 @@ class GitRepoRequest(BaseModel):
     branch: Optional[str] = None
     type: Optional[RepoType] = None
     file_patterns: Optional[List[str]] = None
+    git_token: Optional[str] = None  # Added git_token field
 
 # Directories and files to ignore
 IGNORE_PATTERNS = [
@@ -280,11 +281,14 @@ def get_git_structure(
         # Detect or use provided repo type
         repo_type = request.type or detect_repo_type(request.repo_url)
 
+        # Use git_token from request body if provided, otherwise use x_git_token from header
+        git_token = request.git_token or x_git_token
+
         structure = GitTraverser().traverse_git_repo.remote(
             request.repo_url,
             request.branch,
             repo_type,
-            x_git_token,
+            git_token,
             request.file_patterns
         )
         return JSONResponse(content=structure)
