@@ -16,7 +16,7 @@ def json_serial(obj):
         return obj.isoformat()
     raise TypeError(f"Type {type(obj)} not serializable")
 
-@app.function(image=image, keep_warm=1)
+@app.function(image=image, container_idle_timeout=120, allow_concurrent_inputs=10)
 def preload_and_query_duckdb(query: str):
     import duckdb
     conn = duckdb.connect('vault.duckdb')
