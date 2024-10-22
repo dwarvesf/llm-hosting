@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from fastapi import HTTPException, Header
 from fastapi.responses import JSONResponse
 from modal import Image, App, web_endpoint, Secret, Volume, method, enter, exit
-from typing import Optional, List
+from typing import Optional, List, Union
 from enum import Enum
 from urllib.parse import urlparse
 
@@ -28,10 +28,23 @@ class RepoType(str, Enum):
 
 class GitRepoRequest(BaseModel):
     repo_url: str
-    branch: Optional[str] = None
-    type: Optional[RepoType] = None
-    file_patterns: Optional[List[str]] = None
-    git_token: Optional[str] = None  # Added git_token field
+    branch: Optional[str] = "main"
+    type: Optional[Union[RepoType, str]] = None
+    file_patterns: Optional[Union[List[str], str]] = None
+    git_token: Optional[str] = None
+
+    @classmethod
+    def parse_obj(cls, obj):
+        # Convert "null" strings to None
+        for key, value in obj.items():
+            if isinstance(value, str) and value.lower() == "null":
+                obj[key] = None
+        
+        # Set default branch to "main" if it's None
+        if obj.get('branch') is None:
+            obj['branch'] = "main"
+        
+        return super().parse_obj(obj)
 
 # Directories and files to ignore
 IGNORE_PATTERNS = [
@@ -279,17 +292,25 @@ def get_git_structure(
             raise HTTPException(status_code=401, detail="Invalid or missing bearer token")
 
         # Detect or use provided repo type
-        repo_type = request.type or detect_repo_type(request.repo_url)
+        repo_type = request.type if request.type not in (None, "null") else detect_repo_type(request.repo_url)
 
         # Use git_token from request body if provided, otherwise use x_git_token from header
         git_token = request.git_token or x_git_token
 
+        # Convert file_patterns to List[str] if it's a string
+        file_patterns = request.file_patterns
+        if isinstance(file_patterns, str):
+            file_patterns = [pattern.strip() for pattern in file_patterns.split(',')]
+
+        # Use the branch from the request, which will default to "main" if not provided or set to "null"
+        branch = request.branch
+
         structure = GitTraverser().traverse_git_repo.remote(
             request.repo_url,
-            request.branch,
+            branch,
             repo_type,
             git_token,
-            request.file_patterns
+            file_patterns
         )
         return JSONResponse(content=structure)
     except HTTPException as he:
