@@ -215,22 +215,28 @@ class GitTraverser:
             return repo_url
 
         try:
+            clone_url = prepare_clone_url()
+            
+            # Check if the repository exists
+            git.cmd.Git().ls_remote(clone_url)
+            
             if os.path.exists(clone_dir):
                 print(f"Repository directory already exists: {clone_dir}")
                 repo = git.Repo(clone_dir)
             else:
-                clone_url = prepare_clone_url()
                 print(f"Cloning repository: {repo_url}")
                 
-                if branch is None:
-                    # Try cloning with 'main' first, then 'master' if it fails
-                    try:
-                        repo = git.Repo.clone_from(clone_url, clone_dir, branch='main', filter='blob:none')
-                    except git.GitCommandError:
-                        print("Failed to clone 'main' branch, attempting 'master'")
-                        repo = git.Repo.clone_from(clone_url, clone_dir, branch='master', filter='blob:none')
-                else:
-                    repo = git.Repo.clone_from(clone_url, clone_dir, branch=branch, filter='blob:none')
+                # Clone without specifying a branch first
+                repo = git.Repo.clone_from(clone_url, clone_dir, filter='blob:none')
+                print(f"Successfully cloned repository")
+
+            # After cloning, try to checkout the specified branch if it exists
+            if branch:
+                try:
+                    repo.git.checkout(branch)
+                    print(f"Checked out branch: {branch}")
+                except git.GitCommandError:
+                    print(f"Branch '{branch}' not found, staying on default branch")
 
             def traverse_directory(path='.'):
                 result = {}
@@ -272,9 +278,12 @@ class GitTraverser:
             return {"structure": structure}
 
         except git.GitCommandError as e:
-            raise Exception(f"Git command error: {str(e)}")
-        except git.InvalidGitRepositoryError:
-            raise Exception(f"Invalid git repository: {clone_dir}")
+            if "Repository not found" in str(e):
+                raise Exception(f"Repository not found: {repo_url}")
+            elif "Remote branch not found" in str(e):
+                raise Exception(f"Branch '{branch}' not found in the repository")
+            else:
+                raise Exception(f"Git command error: {str(e)}")
         except Exception as e:
             raise Exception(f"Error traversing repository: {str(e)}")
 
