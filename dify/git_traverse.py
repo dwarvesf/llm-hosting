@@ -8,6 +8,7 @@ from modal import Image, App, web_endpoint, Secret, Volume, method, enter, exit
 from typing import Optional, List, Union
 from enum import Enum
 from urllib.parse import urlparse
+from asyncio import Lock
 
 # Create Modal Image with required dependencies
 image = (
@@ -173,6 +174,7 @@ class GitTraverser:
         if not os.path.exists(self.clone_dir):
             os.makedirs(self.clone_dir)
         repo_volume.reload()
+        self.repo_locks = {}
 
     @exit()
     def cleanup(self):
@@ -191,7 +193,7 @@ class GitTraverser:
         print("Repository directory cleared.")
 
     @method()
-    def traverse_git_repo(self, repo_url: str, branch: Optional[str] = None, repo_type: RepoType = None, token: Optional[str] = None, file_patterns: Optional[List[str]] = None) -> dict:
+    async def traverse_git_repo(self, repo_url: str, branch: Optional[str] = None, repo_type: RepoType = None, token: Optional[str] = None, file_patterns: Optional[List[str]] = None) -> dict:
         """
         Clone a git repository blobless if it doesn't exist, traverse it, and return its directory structure.
         """
@@ -206,86 +208,91 @@ class GitTraverser:
         repo_name = os.path.splitext(os.path.basename(urlparse(repo_url).path))[0]
         clone_dir = os.path.join(self.clone_dir, repo_name)
 
-        def prepare_clone_url():
-            if token:
-                if repo_type == RepoType.GITHUB:
-                    return repo_url.replace('https://', f'https://{token}@')
-                elif repo_type == RepoType.GITLAB:
-                    return repo_url.replace('https://', f'https://oauth2:{token}@')
-            return repo_url
+        # Get or create a lock for this repository
+        if repo_name not in self.repo_locks:
+            self.repo_locks[repo_name] = Lock()
 
-        try:
-            clone_url = prepare_clone_url()
-            
-            # Check if the repository exists
-            git.cmd.Git().ls_remote(clone_url)
-            
-            if os.path.exists(clone_dir):
-                print(f"Repository directory already exists: {clone_dir}")
-                repo = git.Repo(clone_dir)
-            else:
-                print(f"Cloning repository: {repo_url}")
+        async with self.repo_locks[repo_name]:
+            def prepare_clone_url():
+                if token:
+                    if repo_type == RepoType.GITHUB:
+                        return repo_url.replace('https://', f'https://{token}@')
+                    elif repo_type == RepoType.GITLAB:
+                        return repo_url.replace('https://', f'https://oauth2:{token}@')
+                return repo_url
+
+            try:
+                clone_url = prepare_clone_url()
                 
-                # Clone without specifying a branch first
-                repo = git.Repo.clone_from(clone_url, clone_dir, filter='blob:none')
-                print(f"Successfully cloned repository")
+                # Check if the repository exists
+                git.cmd.Git().ls_remote(clone_url)
+                
+                if os.path.exists(clone_dir):
+                    print(f"Repository directory already exists: {clone_dir}")
+                    repo = git.Repo(clone_dir)
+                else:
+                    print(f"Cloning repository: {repo_url}")
+                    
+                    # Clone without specifying a branch first
+                    repo = git.Repo.clone_from(clone_url, clone_dir, filter='blob:none')
+                    print(f"Successfully cloned repository")
 
-            # After cloning, try to checkout the specified branch if it exists
-            if branch:
-                try:
-                    repo.git.checkout(branch)
-                    print(f"Checked out branch: {branch}")
-                except git.GitCommandError:
-                    print(f"Branch '{branch}' not found, staying on default branch")
+                # After cloning, try to checkout the specified branch if it exists
+                if branch:
+                    try:
+                        repo.git.checkout(branch)
+                        print(f"Checked out branch: {branch}")
+                    except git.GitCommandError:
+                        print(f"Branch '{branch}' not found, staying on default branch")
 
-            def traverse_directory(path='.'):
-                result = {}
-                try:
-                    items = repo.git.ls_tree('-r', '--name-only', 'HEAD', path).splitlines()
-                except git.GitCommandError as e:
-                    print(f"Git error in traverse_directory: {str(e)}")
+                def traverse_directory(path='.'):
+                    result = {}
+                    try:
+                        items = repo.git.ls_tree('-r', '--name-only', 'HEAD', path).splitlines()
+                    except git.GitCommandError as e:
+                        print(f"Git error in traverse_directory: {str(e)}")
+                        return result
+
+                    for item in items:
+                        if should_ignore(item):
+                            continue
+
+                        parts = item.split('/')
+                        current = result
+                        for part in parts[:-1]:
+                            if part not in current:
+                                current[part] = {}
+                            current = current[part]
+                        
+                        if is_important_file(item, file_patterns):
+                            try:
+                                content = repo.git.show(f'HEAD:{item}')
+                                current[parts[-1]] = content
+                            except git.GitCommandError as e:
+                                print(f"Error reading file {item}: {str(e)}")
+                                current[parts[-1]] = "Error reading file"
+                        else:
+                            current[parts[-1]] = "file"
+
                     return result
 
-                for item in items:
-                    if should_ignore(item):
-                        continue
+                # Traverse the repository
+                structure = traverse_directory()
 
-                    parts = item.split('/')
-                    current = result
-                    for part in parts[:-1]:
-                        if part not in current:
-                            current[part] = {}
-                        current = current[part]
-                    
-                    if is_important_file(item, file_patterns):
-                        try:
-                            content = repo.git.show(f'HEAD:{item}')
-                            current[parts[-1]] = content
-                        except git.GitCommandError as e:
-                            print(f"Error reading file {item}: {str(e)}")
-                            current[parts[-1]] = "Error reading file"
-                    else:
-                        current[parts[-1]] = "file"
+                # Commit changes to the volume
+                repo_volume.commit()
 
-                return result
+                return {"structure": structure}
 
-            # Traverse the repository
-            structure = traverse_directory()
-
-            # Commit changes to the volume
-            repo_volume.commit()
-
-            return {"structure": structure}
-
-        except git.GitCommandError as e:
-            if "Repository not found" in str(e):
-                raise Exception(f"Repository not found: {repo_url}")
-            elif "Remote branch not found" in str(e):
-                raise Exception(f"Branch '{branch}' not found in the repository")
-            else:
-                raise Exception(f"Git command error: {str(e)}")
-        except Exception as e:
-            raise Exception(f"Error traversing repository: {str(e)}")
+            except git.GitCommandError as e:
+                if "Repository not found" in str(e):
+                    raise Exception(f"Repository not found: {repo_url}")
+                elif "Remote branch not found" in str(e):
+                    raise Exception(f"Branch '{branch}' not found in the repository")
+                else:
+                    raise Exception(f"Git command error: {str(e)}")
+            except Exception as e:
+                raise Exception(f"Error traversing repository: {str(e)}")
 
 @app.function(image=image, secrets=[Secret.from_name("git-traverser-secret")])
 @web_endpoint(method="POST")
